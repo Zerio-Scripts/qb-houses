@@ -65,7 +65,9 @@ local Translations = {
         ["change_character"] = "Change Character",
         ["characters"] = "Characters",
         ["enter_unlocked_house"] = "Enter Unlocked House",
-        ["lock_door_police"] = "Lock Door"
+        ["lock_door_police"] = "Lock Door",
+        ["open_garage"] = "Open Garage",
+        ["store_vehicle"] = "Store Vehicle"
     },
     target = {
         ["open_stash"] = "[E] Open Stash",

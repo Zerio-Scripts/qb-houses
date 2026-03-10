@@ -98,6 +98,23 @@ local function showEntranceHeaderMenu()
         end
     end
 
+    if isOwned and HasHouseKey and ClosestHouse and Config.Houses[ClosestHouse].garage and next(Config.Houses[ClosestHouse].garage) then
+        headerMenu[#headerMenu + 1] = {
+            header = Lang:t('menu.open_garage'),
+            params = {
+                event = 'qb-houses:client:openHouseGarage',
+                args = {}
+            }
+        }
+        headerMenu[#headerMenu + 1] = {
+            header = Lang:t('menu.store_vehicle'),
+            params = {
+                event = 'qb-houses:client:storeHouseVehicle',
+                args = {}
+            }
+        }
+    end
+
     headerMenu[#headerMenu + 1] = {
         header = Lang:t('menu.close_menu'),
         params = {
@@ -528,9 +545,6 @@ local function SetClosestHouse()
             end, ClosestHouse)
         end
     end
-    
-    if ClosestHouse and next(Config.Houses[ClosestHouse].garage) == nil then return end
-    TriggerEvent('qb-garages:client:setHouseGarage', ClosestHouse, HasHouseKey)
 end
 
 local function setHouseLocations()
@@ -1086,8 +1100,6 @@ AddEventHandler('QBCore:Client:OnPlayerLoaded', function()
     if Config.UnownedBlips then TriggerEvent('qb-houses:client:setupHouseBlips2') end
     Wait(100)
     TriggerServerEvent('qb-houses:server:setHouses')
-    if ClosestHouse and next(Config.Houses[ClosestHouse].garage) == nil then return end
-    TriggerEvent('qb-garages:client:setHouseGarage', ClosestHouse, HasHouseKey)
 end)
 
 RegisterNetEvent('QBCore:Client:OnPlayerUnload', function()
@@ -1137,6 +1149,18 @@ RegisterNetEvent('qb-houses:client:addGarage', function()
         TriggerServerEvent('qb-houses:server:addGarage', ClosestHouse, coords)
     else
         QBCore.Functions.Notify(Lang:t('error.no_house'), 'error')
+    end
+end)
+
+RegisterNetEvent('qb-houses:client:openHouseGarage', function()
+    if ClosestHouse then
+        TriggerServerEvent('qb-houses:server:openGarage', ClosestHouse)
+    end
+end)
+
+RegisterNetEvent('qb-houses:client:storeHouseVehicle', function()
+    if ClosestHouse then
+        TriggerServerEvent('qb-houses:server:storeVehicle', ClosestHouse)
     end
 end)
 
@@ -1526,9 +1550,6 @@ CreateThread(function()
         TriggerEvent('qb-houses:client:setupHouseBlips2')
     end
     Wait(wait)
-    if ClosestHouse and next(Config.Houses[ClosestHouse].garage) ~= nil then
-        TriggerEvent('qb-garages:client:setHouseGarage', ClosestHouse, HasHouseKey)
-    end
     TriggerServerEvent('qb-houses:server:setHouses')
 
     while true do

@@ -7,7 +7,6 @@ local housesLoaded = false
 -- Threads
 
 CreateThread(function()
-    local HouseGarages = {}
     local result = MySQL.query.await('SELECT * FROM houselocations', {})
     if result[1] then
         for _, v in pairs(result) do
@@ -26,13 +25,8 @@ CreateThread(function()
                 garage = garage,
                 decorations = {}
             }
-            HouseGarages[v.name] = {
-                label = v.label,
-                takeVehicle = garage
-            }
         end
     end
-    TriggerClientEvent('qb-garages:client:houseGarageConfig', -1, HouseGarages)
     TriggerClientEvent('qb-houses:client:setHouseConfig', -1, Config.Houses)
 end)
 
@@ -199,12 +193,31 @@ end)
 RegisterNetEvent('qb-houses:server:addGarage', function(house, coords)
     local src = source
     MySQL.update('UPDATE houselocations SET garage = ? WHERE name = ?', { json.encode(coords), house })
-    local garageInfo = {
-        label = Config.Houses[house].adress,
-        takeVehicle = coords
-    }
-    TriggerClientEvent('qb-garages:client:addHouseGarage', -1, house, garageInfo)
-    TriggerClientEvent('QBCore:Notify', src, Lang:t('info.added_garage', { value = garageInfo.label }))
+    Config.Houses[house].garage = coords
+    TriggerClientEvent('qb-houses:client:setHouseConfig', -1, Config.Houses)
+    TriggerClientEvent('QBCore:Notify', src, Lang:t('info.added_garage', { value = Config.Houses[house].adress }))
+end)
+
+RegisterNetEvent('qb-houses:server:openGarage', function(house)
+    local src = source
+    local Player = QBCore.Functions.GetPlayer(src)
+    if not Player then return end
+    if not hasKey(Player.PlayerData.license, Player.PlayerData.citizenid, house) then return end
+    local houseData = Config.Houses[house]
+    if not houseData or not houseData.garage or not next(houseData.garage) then return end
+    local g = houseData.garage
+    local spawns = vector4(g.x, g.y, g.z, g.w or 0.0)
+    exports['zerio-garage']:OpenHousingGarage(src, houseData.adress, spawns)
+end)
+
+RegisterNetEvent('qb-houses:server:storeVehicle', function(house)
+    local src = source
+    local Player = QBCore.Functions.GetPlayer(src)
+    if not Player then return end
+    if not hasKey(Player.PlayerData.license, Player.PlayerData.citizenid, house) then return end
+    local houseData = Config.Houses[house]
+    if not houseData or not houseData.garage or not next(houseData.garage) then return end
+    exports['zerio-garage']:StoreHousingVehicle(src, houseData.adress)
 end)
 
 RegisterNetEvent('qb-houses:server:viewHouse', function(house)
