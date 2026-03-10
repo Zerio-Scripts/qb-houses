@@ -202,7 +202,10 @@ RegisterNetEvent('qb-houses:server:openGarage', function(house)
     local src = source
     local Player = QBCore.Functions.GetPlayer(src)
     if not Player then return end
-    if not hasKey(Player.PlayerData.license, Player.PlayerData.citizenid, house) then return end
+    if not hasKey(Player.PlayerData.license, Player.PlayerData.citizenid, house) then
+        Player.Functions.Notify(Lang:t('error.no_key'), 'error')
+        return
+    end
     local houseData = Config.Houses[house]
     if not houseData or not houseData.garage or not next(houseData.garage) then return end
     local g = houseData.garage
@@ -729,3 +732,47 @@ local function getKeyHolderData()
 end
 
 exports('getKeyHolderData', getKeyHolderData)
+
+--- Get all house garages for a specific player (by identifier)
+--- @param identifier string - The player's license identifier
+--- @return table - Array of house garage objects with name, label, and garage coordinates
+local function getPlayerHouseGarages(identifier)
+    if not identifier then return {} end
+    
+    -- Query player_houses joined with houselocations to get label and garage data
+    local result = MySQL.query.await([[
+        SELECT 
+            ph.house,
+            hl.label,
+            hl.garage,
+            hl.tier,
+            hl.price
+        FROM player_houses ph
+        INNER JOIN houselocations hl ON ph.house = hl.name
+        WHERE ph.keyholders like ?
+    ]], { '%"' .. identifier .. '"%' })
+    
+    if not result or not result[1] then return {} end
+    
+    local houseGarages = {}
+    
+    for _, house in pairs(result) do
+        -- Decode the garage JSON data
+        local garage = json.decode(house.garage) or {}
+        
+        -- Only add houses that have garages configured
+        if garage and next(garage) then
+            houseGarages[#houseGarages + 1] = {
+                name = house.label or house.house,
+                label = house.label or house.house,
+                garage = garage,
+                tier = house.tier,
+                price = house.price
+            }
+        end
+    end
+    
+    return houseGarages
+end
+
+exports('getPlayerHouseGarages', getPlayerHouseGarages)
