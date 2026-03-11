@@ -1,6 +1,8 @@
 # qb-houses
 Real Estate for QB-Core Framework :house_with_garden:
 
+## This is a fork for zerio-garage support, there's no point in using this unless you're using zerio-garage.
+
 # License
 
     QBCore Framework
