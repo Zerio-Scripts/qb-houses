@@ -127,6 +127,36 @@ local function showEntranceHeaderMenu()
     end
 end
 
+local function showGarageMenu()
+    if not (isOwned and HasHouseKey and ClosestHouse) then return end
+    if not (Config.Houses[ClosestHouse].garage and next(Config.Houses[ClosestHouse].garage)) then return end
+
+    local garageMenu = {
+        {
+            header = Lang:t('menu.open_garage'),
+            params = {
+                event = 'qb-houses:client:openHouseGarage',
+                args = {}
+            }
+        },
+        {
+            header = Lang:t('menu.store_vehicle'),
+            params = {
+                event = 'qb-houses:client:storeHouseVehicle',
+                args = {}
+            }
+        },
+        {
+            header = Lang:t('menu.close_menu'),
+            params = {
+                event = 'qb-menu:client:closeMenu'
+            }
+        },
+    }
+
+    exports['qb-menu']:openMenu(garageMenu)
+end
+
 local function showExitHeaderMenu()
     local headerMenu = {}
     headerMenu[#headerMenu + 1] = {
@@ -253,7 +283,8 @@ local function RegisterHouseExitZone(id)
     end
 
     local house = Config.Houses[id]
-    local coords = vector3(house.coords['enter'].x + POIOffsets.exit.x, house.coords['enter'].y + POIOffsets.exit.y, house.coords['enter'].z - Config.MinZOffset + POIOffsets.exit.z + 1.0)
+    local coords = vector3(house.coords['enter'].x + POIOffsets.exit.x, house.coords['enter'].y + POIOffsets.exit.y,
+        house.coords['enter'].z - Config.MinZOffset + POIOffsets.exit.z + 1.0)
 
     local zone = BoxZone:Create(coords, 2, 1, {
         name = boxName,
@@ -302,6 +333,37 @@ local function RegisterHouseEntranceZone(id, house)
     Config.Targets[boxName] = { created = true, zone = zone }
 end
 
+local function RegisterHouseGarageZone(id, house)
+    local g = house.garage
+    if not g or not next(g) then return end
+
+    local coords = vector3(g.x, g.y, g.z)
+    local boxName = 'houseGarage_' .. id
+    local boxData = Config.Targets[boxName] or {}
+
+    if boxData and boxData.created then
+        return
+    end
+
+    local zone = BoxZone:Create(coords, 5, 5, {
+        name = boxName,
+        heading = g.w or 0.0,
+        debugPoly = false,
+        minZ = g.z - 1.5,
+        maxZ = g.z + 2.5,
+    })
+
+    zone:onPlayerInOut(function(isPointInside)
+        if isPointInside then
+            showGarageMenu()
+        else
+            CloseMenuFull()
+        end
+    end)
+
+    Config.Targets[boxName] = { created = true, zone = zone }
+end
+
 local function DeleteBoxTarget(box)
     if not box then
         return
@@ -326,6 +388,9 @@ local function SetHousesEntranceTargets()
         for id, house in pairs(Config.Houses) do
             if house and house.coords and house.coords['enter'] then
                 RegisterHouseEntranceZone(id, house)
+            end
+            if house and house.garage and next(house.garage) then
+                RegisterHouseGarageZone(id, house)
             end
         end
     end
@@ -443,7 +508,8 @@ end
 local function FrontDoorCam(coords)
     DoScreenFadeOut(150)
     Wait(500)
-    cam = CreateCamWithParams('DEFAULT_SCRIPTED_CAMERA', coords.x, coords.y, coords.z + 0.5, 0.0, 0.00, coords.h - 180, 80.00, false, 0)
+    cam = CreateCamWithParams('DEFAULT_SCRIPTED_CAMERA', coords.x, coords.y, coords.z + 0.5, 0.0, 0.00, coords.h - 180,
+        80.00, false, 0)
     SetCamActive(cam, true)
     RenderScriptCams(true, true, 500, true, true)
     TriggerEvent('qb-weathersync:client:EnableSync')
@@ -596,11 +662,20 @@ local function LoadDecorations(house)
                         while not HasModelLoaded(modelHash) do
                             Wait(10)
                         end
-                        local decorateObject = CreateObject(modelHash, Config.Houses[house].decorations[k].x, Config.Houses[house].decorations[k].y, Config.Houses[house].decorations[k].z, false, false, false)
+                        local decorateObject = CreateObject(modelHash, Config.Houses[house].decorations[k].x,
+                            Config.Houses[house].decorations[k].y, Config.Houses[house].decorations[k].z, false, false,
+                            false)
                         FreezeEntityPosition(decorateObject, true)
-                        SetEntityCoordsNoOffset(decorateObject, Config.Houses[house].decorations[k].x, Config.Houses[house].decorations[k].y, Config.Houses[house].decorations[k].z)
-                        SetEntityRotation(decorateObject, Config.Houses[house].decorations[k].rotx, Config.Houses[house].decorations[k].roty, Config.Houses[house].decorations[k].rotz)
-                        ObjectList[Config.Houses[house].decorations[k].objectId] = { hashname = Config.Houses[house].decorations[k].hashname, x = Config.Houses[house].decorations[k].x, y = Config.Houses[house].decorations[k].y, z = Config.Houses[house].decorations[k].z, rotx = Config.Houses[house].decorations[k].rotx, roty = Config.Houses[house].decorations[k].roty, rotz = Config.Houses[house].decorations[k].rotz, object = decorateObject, objectId = Config.Houses[house].decorations[k].objectId }
+                        SetEntityCoordsNoOffset(decorateObject, Config.Houses[house].decorations[k].x,
+                            Config.Houses[house].decorations[k].y, Config.Houses[house].decorations[k].z)
+                        SetEntityRotation(decorateObject, Config.Houses[house].decorations[k].rotx,
+                            Config.Houses[house].decorations[k].roty, Config.Houses[house].decorations[k].rotz)
+                        ObjectList[Config.Houses[house].decorations[k].objectId] = { hashname = Config.Houses[house]
+                        .decorations[k].hashname, x = Config.Houses[house].decorations[k].x, y = Config.Houses[house]
+                        .decorations[k].y, z = Config.Houses[house].decorations[k].z, rotx = Config.Houses[house]
+                        .decorations[k].rotx, roty = Config.Houses[house].decorations[k].roty, rotz = Config.Houses
+                        [house].decorations[k].rotz, object = decorateObject, objectId = Config.Houses[house]
+                        .decorations[k].objectId }
                     end
                 end
             end
@@ -619,13 +694,20 @@ local function LoadDecorations(house)
                 while not HasModelLoaded(modelHash) do
                     Wait(10)
                 end
-                local decorateObject = CreateObject(modelHash, Config.Houses[house].decorations[k].x, Config.Houses[house].decorations[k].y, Config.Houses[house].decorations[k].z, false, false, false)
+                local decorateObject = CreateObject(modelHash, Config.Houses[house].decorations[k].x,
+                    Config.Houses[house].decorations[k].y, Config.Houses[house].decorations[k].z, false, false, false)
                 PlaceObjectOnGroundProperly(decorateObject)
                 FreezeEntityPosition(decorateObject, true)
-                SetEntityCoordsNoOffset(decorateObject, Config.Houses[house].decorations[k].x, Config.Houses[house].decorations[k].y, Config.Houses[house].decorations[k].z)
+                SetEntityCoordsNoOffset(decorateObject, Config.Houses[house].decorations[k].x,
+                    Config.Houses[house].decorations[k].y, Config.Houses[house].decorations[k].z)
                 Config.Houses[house].decorations[k].object = decorateObject
-                SetEntityRotation(decorateObject, Config.Houses[house].decorations[k].rotx, Config.Houses[house].decorations[k].roty, Config.Houses[house].decorations[k].rotz)
-                ObjectList[Config.Houses[house].decorations[k].objectId] = { hashname = Config.Houses[house].decorations[k].hashname, x = Config.Houses[house].decorations[k].x, y = Config.Houses[house].decorations[k].y, z = Config.Houses[house].decorations[k].z, rotx = Config.Houses[house].decorations[k].rotx, roty = Config.Houses[house].decorations[k].roty, rotz = Config.Houses[house].decorations[k].rotz, object = decorateObject, objectId = Config.Houses[house].decorations[k].objectId }
+                SetEntityRotation(decorateObject, Config.Houses[house].decorations[k].rotx,
+                    Config.Houses[house].decorations[k].roty, Config.Houses[house].decorations[k].rotz)
+                ObjectList[Config.Houses[house].decorations[k].objectId] = { hashname = Config.Houses[house].decorations
+                [k].hashname, x = Config.Houses[house].decorations[k].x, y = Config.Houses[house].decorations[k].y, z =
+                Config.Houses[house].decorations[k].z, rotx = Config.Houses[house].decorations[k].rotx, roty = Config
+                .Houses[house].decorations[k].roty, rotz = Config.Houses[house].decorations[k].rotz, object =
+                decorateObject, objectId = Config.Houses[house].decorations[k].objectId }
             end
         end
     end
@@ -924,7 +1006,8 @@ local function enterOwnedHouse(house)
     openHouseAnim()
     IsInside = true
     Wait(250)
-    local coords = { x = Config.Houses[house].coords.enter.x, y = Config.Houses[house].coords.enter.y, z = Config.Houses[house].coords.enter.z - Config.MinZOffset }
+    local coords = { x = Config.Houses[house].coords.enter.x, y = Config.Houses[house].coords.enter.y, z = Config.Houses
+    [house].coords.enter.z - Config.MinZOffset }
     LoadDecorations(house)
     data = getDataForHouseTier(house, coords)
     Wait(100)
@@ -958,7 +1041,8 @@ local function LeaveHouse(house)
             TriggerEvent('qb-weathersync:client:EnableSync')
             Wait(250)
             DoScreenFadeIn(250)
-            SetEntityCoords(PlayerPedId(), Config.Houses[CurrentHouse].coords.enter.x, Config.Houses[CurrentHouse].coords.enter.y, Config.Houses[CurrentHouse].coords.enter.z)
+            SetEntityCoords(PlayerPedId(), Config.Houses[CurrentHouse].coords.enter.x,
+                Config.Houses[CurrentHouse].coords.enter.y, Config.Houses[CurrentHouse].coords.enter.z)
             SetEntityHeading(PlayerPedId(), Config.Houses[CurrentHouse].coords.enter.h)
             TriggerEvent('qb-weed:client:leaveHouse')
             TriggerServerEvent('qb-houses:server:SetInsideMeta', house, false)
@@ -983,7 +1067,8 @@ local function enterNonOwnedHouse(house)
     openHouseAnim()
     IsInside = true
     Wait(250)
-    local coords = { x = Config.Houses[ClosestHouse].coords.enter.x, y = Config.Houses[ClosestHouse].coords.enter.y, z = Config.Houses[ClosestHouse].coords.enter.z - Config.MinZOffset }
+    local coords = { x = Config.Houses[ClosestHouse].coords.enter.x, y = Config.Houses[ClosestHouse].coords.enter.y, z =
+    Config.Houses[ClosestHouse].coords.enter.z - Config.MinZOffset }
     LoadDecorations(house)
     data = getDataForHouseTier(house, coords)
     houseObj = data[1]
@@ -1046,7 +1131,8 @@ local function changeCharacter()
         end
         exports['qb-interior']:DespawnInterior(houseObj, function()
             TriggerEvent('qb-weathersync:client:EnableSync')
-            SetEntityCoords(PlayerPedId(), Config.Houses[CurrentHouse].coords.enter.x, Config.Houses[CurrentHouse].coords.enter.y, Config.Houses[CurrentHouse].coords.enter.z + 0.5)
+            SetEntityCoords(PlayerPedId(), Config.Houses[CurrentHouse].coords.enter.x,
+                Config.Houses[CurrentHouse].coords.enter.y, Config.Houses[CurrentHouse].coords.enter.z + 0.5)
             SetEntityHeading(PlayerPedId(), Config.Houses[CurrentHouse].coords.enter.h)
             InOwnedHouse = false
             IsInside = false
@@ -1274,7 +1360,8 @@ RegisterNetEvent('qb-houses:client:setupHouseBlips', function() -- Setup owned o
                 if ownedHouses then
                     for k, _ in pairs(ownedHouses) do
                         local house = Config.Houses[ownedHouses[k]]
-                        local HouseBlip = AddBlipForCoord(house.coords.enter.x, house.coords.enter.y, house.coords.enter.z)
+                        local HouseBlip = AddBlipForCoord(house.coords.enter.x, house.coords.enter.y,
+                            house.coords.enter.z)
                         SetBlipSprite(HouseBlip, 40)
                         SetBlipDisplay(HouseBlip, 4)
                         SetBlipScale(HouseBlip, 0.65)
@@ -1334,7 +1421,8 @@ RegisterNetEvent('qb-houses:client:SetClosestHouse', function()
 end)
 
 RegisterNetEvent('qb-houses:client:viewHouse', function(houseprice, brokerfee, bankfee, taxes, firstname, lastname)
-    setViewCam(Config.Houses[ClosestHouse].coords.cam, Config.Houses[ClosestHouse].coords.cam.h, Config.Houses[ClosestHouse].coords.yaw)
+    setViewCam(Config.Houses[ClosestHouse].coords.cam, Config.Houses[ClosestHouse].coords.cam.h,
+        Config.Houses[ClosestHouse].coords.yaw)
     Wait(500)
     openContract(true)
     SendNUIMessage({
@@ -1471,14 +1559,18 @@ RegisterNetEvent('qb-houses:client:ResetHouse', function()
 end)
 
 RegisterNetEvent('qb-houses:client:ExitOwnedHouse', function()
-    local door = vector3(Config.Houses[CurrentHouse].coords.enter.x + POIOffsets.exit.x, Config.Houses[CurrentHouse].coords.enter.y + POIOffsets.exit.y, Config.Houses[CurrentHouse].coords.enter.z - Config.MinZOffset + POIOffsets.exit.z)
+    local door = vector3(Config.Houses[CurrentHouse].coords.enter.x + POIOffsets.exit.x,
+        Config.Houses[CurrentHouse].coords.enter.y + POIOffsets.exit.y,
+        Config.Houses[CurrentHouse].coords.enter.z - Config.MinZOffset + POIOffsets.exit.z)
     if CheckDistance(door, 1.5) then
         LeaveHouse(CurrentHouse)
     end
 end)
 
 RegisterNetEvent('qb-houses:client:FrontDoorCam', function()
-    local door = vector3(Config.Houses[CurrentHouse].coords.enter.x + POIOffsets.exit.x, Config.Houses[CurrentHouse].coords.enter.y + POIOffsets.exit.y, Config.Houses[CurrentHouse].coords.enter.z - Config.MinZOffset + POIOffsets.exit.z)
+    local door = vector3(Config.Houses[CurrentHouse].coords.enter.x + POIOffsets.exit.x,
+        Config.Houses[CurrentHouse].coords.enter.y + POIOffsets.exit.y,
+        Config.Houses[CurrentHouse].coords.enter.z - Config.MinZOffset + POIOffsets.exit.z)
     if CheckDistance(door, 1.5) then
         FrontDoorCam(Config.Houses[CurrentHouse].coords.enter)
     end
@@ -1489,7 +1581,9 @@ RegisterNetEvent('qb-houses:client:AnswerDoorbell', function()
         QBCore.Functions.Notify(Lang:t('error.nobody_at_door'))
         return
     end
-    local door = vector3(Config.Houses[CurrentHouse].coords.enter.x + POIOffsets.exit.x, Config.Houses[CurrentHouse].coords.enter.y + POIOffsets.exit.y, Config.Houses[CurrentHouse].coords.enter.z - Config.MinZOffset + POIOffsets.exit.z)
+    local door = vector3(Config.Houses[CurrentHouse].coords.enter.x + POIOffsets.exit.x,
+        Config.Houses[CurrentHouse].coords.enter.y + POIOffsets.exit.y,
+        Config.Houses[CurrentHouse].coords.enter.z - Config.MinZOffset + POIOffsets.exit.z)
     if CheckDistance(door, 1.5) and CurrentDoorBell ~= 0 then
         TriggerServerEvent('qb-houses:server:OpenDoor', CurrentDoorBell, ClosestHouse)
         CurrentDoorBell = 0
@@ -1497,7 +1591,8 @@ RegisterNetEvent('qb-houses:client:AnswerDoorbell', function()
 end)
 
 RegisterNetEvent('qb-houses:client:ViewHouse', function()
-    local houseCoords = vector3(Config.Houses[ClosestHouse].coords.enter.x, Config.Houses[ClosestHouse].coords.enter.y, Config.Houses[ClosestHouse].coords.enter.z)
+    local houseCoords = vector3(Config.Houses[ClosestHouse].coords.enter.x, Config.Houses[ClosestHouse].coords.enter.y,
+        Config.Houses[ClosestHouse].coords.enter.z)
     if CheckDistance(houseCoords, 1.5) then
         TriggerServerEvent('qb-houses:server:viewHouse', ClosestHouse)
     end
