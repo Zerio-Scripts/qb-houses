@@ -210,11 +210,13 @@ RegisterNetEvent('qb-houses:server:openGarage', function(house)
         Player.Functions.Notify(Lang:t('error.no_keys'), 'error')
         return
     end
+    print("house", house)
+    print("houseData", json.encode(houseData))
     local houseData = Config.Houses[house]
     if not houseData or not houseData.garage or not next(houseData.garage) then return end
     local g = houseData.garage
     local spawns = vector4(g.x, g.y, g.z, g.w or 0.0)
-    exports['zerio-garage']:OpenHousingGarage(src, houseData.adress, spawns)
+    exports['zerio-garage']:OpenHousingGarage(src, house, houseData.adress, spawns)
 end)
 
 RegisterNetEvent('qb-houses:server:storeVehicle', function(house)
@@ -224,7 +226,7 @@ RegisterNetEvent('qb-houses:server:storeVehicle', function(house)
     if not hasKey(Player.PlayerData.license, Player.PlayerData.citizenid, house) then return end
     local houseData = Config.Houses[house]
     if not houseData or not houseData.garage or not next(houseData.garage) then return end
-    exports['zerio-garage']:StoreHousingVehicle(src, houseData.adress)
+    exports['zerio-garage']:StoreHousingVehicle(src, house, houseData.adress)
 end)
 
 RegisterNetEvent('qb-houses:server:viewHouse', function(house)
@@ -785,7 +787,7 @@ local function getPlayerHouseGarages(identifier)
         -- Only add houses that have garages configured
         if garage and next(garage) then
             houseGarages[#houseGarages + 1] = {
-                name = house.label or house.house,
+                name = house.house,
                 label = house.label or house.house,
                 garage = garage,
                 tier = house.tier,
